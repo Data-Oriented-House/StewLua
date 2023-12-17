@@ -7,7 +7,7 @@ local function sand(string1, string2)
 	local length = math.max(#string1, #string2)
 	local string3 = {}
 
-	for i in ipairs(string3) do
+	for i = 1, length do
 		string3[i] = (string.byte(string1, i) == asciiOne and string.byte(string2, i) == asciiOne) and 1 or 0
 	end
 
@@ -25,7 +25,7 @@ local function sor(string1, string2)
 	local length = math.max(#string1, #string2)
 	local string3 = {}
 
-	for i in ipairs(string3) do
+	for i = 1, length do
 		string3[i] = (string.byte(string1, i) == asciiOne or string.byte(string2, i) == asciiOne) and 1 or 0
 	end
 
@@ -40,9 +40,10 @@ local function sor(string1, string2)
 end
 
 local function sxor(string1, string2)
+	local length = math.max(#string1, #string2)
 	local string3 = {}
 
-	for i in ipairs(string3) do
+	for i = 1, length do
 		string3[i] = string.byte(string1, i) == string.byte(string2, i) and 0 or 1
 	end
 
@@ -129,7 +130,8 @@ local function nextId(last)
 end
 
 local function split(str)
-	return string.match(str, '([^,]+)!([^,]+)') or str
+	local include, exclude = string.match(str, '([^,]+)!([^,]+)') or str
+	return include, exclude
 end
 
 --[=[
@@ -149,11 +151,13 @@ local function getCollection(world, signature)
 	world._signatureToCollection[signature] = collection
 
 	local universal = world._signatureToCollection[charZero]
-	for entity, data in universal do
-		if sand(include, data.signature) == include then
-			if not exclude or sand(exclude, data.signature) == charZero then
-				collection[entity] = data.components
-			end
+
+	for entity in pairs(universal) do
+		local data = world._entityToData[entity]
+		if
+			sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero)
+		then
+			collection[entity] = data.components
 		end
 	end
 
@@ -196,6 +200,23 @@ local function unregister(world, entity)
 	world._entityToData[entity] = nil
 
 	world.killed(entity)
+end
+
+local function updateCollections(world, entity, entityData)
+	local signature = entityData.signature
+
+	for collectionSignature, collection in pairs(world._signatureToCollection) do
+		local collectionInclude, collectionExclude = split(collectionSignature)
+
+		if
+			sand(collectionInclude, signature) == collectionInclude
+			and (not collectionExclude or sand(collectionExclude, signature) == charZero)
+		then
+			collection[entity] = entityData.components
+		else
+			collection[entity] = nil
+		end
+	end
 end
 
 --[=[
@@ -394,20 +415,11 @@ function Stew.world()
 				return nil
 			end
 
-			entityData.components[factory] = component
-
 			local signature = sor(entityData.signature, archetype.signature)
 			entityData.signature = signature
+			entityData.components[factory] = component
 
-			for collectionSignature, collection in pairs(world._signatureToCollection) do
-				local collectionInclude, collectionExclude = split(collectionSignature)
-
-				if sand(collectionInclude, signature) == collectionInclude then
-					if not collectionExclude or sand(collectionExclude, signature) == charZero then
-						collection[entity] = entityData.components
-					end
-				end
-			end
+			updateCollections(world, entity, entityData)
 
 			factory.added(entity, component)
 			world.added(factory, entity, component)
@@ -453,15 +465,7 @@ function Stew.world()
 			entityData.signature = signature
 			entityData.components[factory] = nil
 
-			for collectionSignature, collection in pairs(world._signatureToCollection) do
-				local collectionInclude, collectionExclude = split(collectionSignature)
-
-				if sand(collectionInclude, signature) == collectionInclude then
-					if not collectionExclude or sand(collectionExclude, signature) == charZero then
-						collection[entity] = nil
-					end
-				end
-			end
+			updateCollections(world, entity, entityData)
 
 			factory.removed(entity, component)
 			world.removed(factory, entity, component)
@@ -719,5 +723,159 @@ function Stew.world()
 
 	return world
 end
+
+-- do
+-- 	local world = Stew.world()
+
+-- 	function world.built(archetype)
+-- 		print("BUILT", archetype.signature)
+-- 	end
+
+-- 	local Position = world.factory {
+-- 		add = function(f, e, t)
+-- 			t.x = tonumber(t.x) or t[1] or 0
+-- 			t.y = tonumber(t.y) or t[2] or 0
+-- 			t.z = tonumber(t.z) or t[3] or 0
+-- 			return { x = t.x, y = t.y, z = t.z }
+-- 		end,
+-- 	}
+-- 	local Name = world.factory {
+-- 		add = function(f, e, t)
+-- 			if type(t) == 'string' then
+-- 				return { val = t }
+-- 			end
+-- 			t.val = t.val or 'NO NAME'
+-- 			t.val = tostring(t.val)
+-- 			return t
+-- 		end,
+-- 		data = {
+-- 			Name = 'Name',
+-- 			UniqueEntities = {},
+-- 		},
+-- 	}
+-- 	local DoorState = world.factory {
+-- 		add = function(f, e, t)
+-- 			t.proxRadius = t.proxRadius or 5
+-- 			t.wantState = 'close'
+-- 			t.currentState = 'close'
+-- 			t.lastStateChange = os.clock()
+-- 			t.cooldown = t.cooldown or 3
+-- 			t.redstoneEmitSide = t.redstoneEmitSide or 'right'
+-- 			t.redstoneEmitSide = tostring(t.redstoneEmitSide)
+-- 			return t
+-- 		end,
+-- 	}
+-- 	local UpdatePosFromRednet = world.tag()
+-- 	local Player_Tag = world.tag()
+-- 	local UpdatePosFromGPSOnce = world.tag()
+-- 	--[[
+-- function world.added(f, e, c)
+-- 	if type(f.data) == "table" and type(e) == "table" and f.data.Name then
+-- 		e[f.data.Name] = c
+-- 	end
+-- end
+-- function world.removed(f, e, c)
+-- 	if type(f.data) == "table" and type(e) == "table" and f.data.Name then
+-- 		e[f.data.Name] = nil
+-- 	end
+-- end
+-- ]]
+
+-- 	function Name.added(e, c)
+-- 		Name.data.UniqueEntities[c.val] = e
+-- 	end
+-- 	function Name.removed(e, c)
+-- 		Name.data.UniqueEntities[c.val] = nil
+-- 	end
+
+-- 	local function RegisterPlayer(playerName)
+-- 		local ent = world.entity()
+-- 		Position.add(ent, { 1, 3, 2 })
+-- 		print(
+-- 			'PLAYER POSITION REGISTERED',
+-- 			Position.get(ent),
+-- 			Position.get(ent).x,
+-- 			Position.get(ent).y,
+-- 			Position.get(ent).z
+-- 		)
+-- 		UpdatePosFromRednet.add(ent)
+-- 		Player_Tag.add(ent)
+-- 		Name.add(ent, playerName)
+-- 		return ent
+-- 	end
+
+-- 	RegisterPlayer 'Unbox101'
+-- 	RegisterPlayer 'Drako1245'
+
+-- 	local ent = world.entity()
+-- 	Position.add(ent, { 1, 2, 3 })
+-- 	print('DOOR POSITION REGISTERED', Position.get(ent), Position.get(ent).x, Position.get(ent).y, Position.get(ent).z)
+-- 	Name.add(ent, 'Main Entrance Sliding Door')
+-- 	UpdatePosFromGPSOnce.add(ent)
+-- 	DoorState.add(ent, { proxRadius = 9, redstoneEmitSide = 'right', cooldown = 0.9 })
+
+-- 	--Update door entity pos from gps ONCE
+-- 	for ent, data in pairs(world.query { Position, UpdatePosFromGPSOnce }) do
+-- 		local x, y, z = 1, 2, 3
+-- 		local pos = data[Position]
+-- 		pos.x = x
+-- 		pos.y = y
+-- 		pos.z = z
+-- 		print('Updated pos to gps ', x, y, z)
+-- 		--UpdatePosFromGPSOnce.remove(ent)
+-- 	end
+-- 	while true do
+-- 		--Reset door wants
+-- 		for ent, data in pairs(world.query { DoorState }) do
+-- 			print(world.query { DoorState })
+-- 			data[DoorState].wantState = 'close'
+-- 		end
+-- 		--Set door wants based on nearby players
+-- 		for doorEnt, doorComps in pairs(world.query { Position, DoorState }) do
+-- 			for playerEnt, playerComps in pairs(world.query { Position, Player_Tag }) do
+-- 				local doorPos = doorComps[Position]
+-- 				local playerPos = playerComps[Position]
+-- 				local doorState = doorComps[DoorState]
+-- 				print('\tDOORPOS', doorPos, doorPos.x, doorPos.y, doorPos.z)
+-- 				print('\tPLAYERPOS', playerPos, playerPos.x, playerPos.y, playerPos.z)
+-- 				if
+-- 					(playerPos.x - doorPos.x) ^ 2 + (playerPos.y - doorPos.y) ^ 2 + (playerPos.z - doorPos.z) ^ 2
+-- 					< doorState.proxRadius ^ 2
+-- 				then
+-- 					doorState.wantState = 'open'
+-- 					-- print("Distance to door = ", tostring((playerEnt.Position - doorEnt.Position):length()))
+-- 				end
+-- 			end
+-- 		end
+-- 		--Update door state if it is not mid cooldown animation
+-- 		for doorEnt, doorComps in pairs(world.query { Position, DoorState }) do
+-- 			local doorState = doorComps[DoorState]
+-- 			if
+-- 				os.clock() - doorState.lastStateChange > doorState.cooldown
+-- 				and doorState.wantState ~= doorState.currentState
+-- 			then
+-- 				doorState.lastStateChange = os.clock()
+-- 				doorState.currentState = doorState.wantState
+-- 				os.sleep(0.1)
+-- 			end
+-- 		end
+-- 		--UpdateEntity from rednet receive
+-- 		if math.random() < 0.5 then
+-- 			local mData = {
+-- 				UniqueId = 'Unbox101',
+-- 			}
+
+-- 			if Name.data.UniqueEntities[mData.UniqueId] then
+-- 				local Entity = Name.data.UniqueEntities[mData.UniqueId]
+-- 				if mData.Position then
+-- 					local pos = Position.get(Entity)
+-- 					pos.x = mData.Position.x or 0
+-- 					pos.y = mData.Position.y or 0
+-- 					pos.z = mData.Position.z or 0
+-- 				end
+-- 			end
+-- 		end
+-- 	end
+-- end
 
 return Stew
