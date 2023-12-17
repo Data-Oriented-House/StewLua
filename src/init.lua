@@ -1,5 +1,3 @@
---!strict
-
 local charEmpty = ''
 local charZero = '0'
 local asciiOne = string.byte '1'
@@ -138,32 +136,6 @@ end
 	@class Stew
 ]=]
 local Stew = {}
-
--- export type Signature = string
--- export type Components = { [Factory<any, any, any, ...any, ...any>]: any }
--- export type Collection = {
--- 	[any]: Components,
--- }
--- export type EntityData = {
--- 	signature: Signature,
--- 	components: Components,
--- }
--- export type Add<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, entity: E, A...) -> C
--- export type Remove<E, C, D, A..., R...> = (factory: Factory<E, C, D, A..., R...>, entity: E, component: C, R...) -> ()
--- export type Archetype<E, C, D, A..., R...> = {
--- 	create: Add<E, C, D, A..., R...>,
--- 	delete: Remove<E, C, D, A..., R...>,
--- 	signature: Signature,
--- 	factory: Factory<E, C, D, A..., R...>,
--- }
--- export type Factory<E, C, D, A..., R...> = {
--- 	add: (entity: E, A...) -> C,
--- 	remove: (entity: E, R...) -> (),
--- 	get: (entity: E) -> C?,
--- 	data: D,
--- 	added: (entity: E, component: C) -> (),
--- 	removed: (entity: E, component: C) -> (),
--- }
 
 local function getCollection(world, signature)
 	local include, exclude = split(signature)
@@ -591,6 +563,8 @@ function Stew.world()
 
 	--[=[
 		@within World
+		@param entity any
+		@param ... any
 
 		Removes all components from an entity and unregisters it.
 
@@ -623,6 +597,7 @@ function Stew.world()
 	--[=[
 		@within World
 		@tag Do Not Modify
+		@param entity any
 		@return Components
 
 		Gets all components of an entity in a neat table you can iterate over.
@@ -773,7 +748,7 @@ local entity = world.entity()
 
 position.add(entity)
 print(position.get(entity))
-for entity, data in pairs(world.query {position}) do
+for entity, data in pairs(world.query { position }) do
 	print('\tQUERIED: ', entity, data[position])
 end
 
