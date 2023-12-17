@@ -138,20 +138,18 @@ end
 local Stew = {}
 
 local function getCollection(world, signature)
-	local include, exclude = split(signature)
-
 	local found = world._signatureToCollection[signature]
 	if found then
 		return found
 	end
 
+	local include, exclude = split(signature)
+
 	local collection = {}
 	world._signatureToCollection[signature] = collection
 
 	local universal = world._signatureToCollection[charZero]
-	for entity in universal do
-		local data = world._entityToData[entity]
-
+	for entity, data in universal do
 		if sand(include, data.signature) == include then
 			if not exclude or sand(exclude, data.signature) == charZero then
 				collection[entity] = data.components
