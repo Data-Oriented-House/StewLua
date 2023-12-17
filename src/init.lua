@@ -720,36 +720,4 @@ function Stew.world()
 	return world
 end
 
-local world = Stew.world()
-
-local position = world.factory {
-	add = function(factory, entity, x, y, z)
-		local component = '{' .. (x or 0) .. ', ' .. (y or 0) .. ', ' .. (z or 0) .. '}'
-		print('Adding ' .. tostring(entity) .. '\'s Position ' .. component)
-		return component
-	end,
-
-	remove = function(factory, entity, component)
-		print('Removing ' .. tostring(entity) .. '\'s Position ' .. component)
-	end,
-}
-
-function position.added(entity, component)
-	print('Added ' .. tostring(entity) .. '\'s Position ' .. component)
-end
-
-function position.removed(entity, component)
-	print('Removed ' .. tostring(entity) .. '\'s Position ' .. component)
-end
-
-local entity = world.entity()
-
-position.add(entity)
-print(position.get(entity))
-for entity, data in pairs(world.query { position }) do
-	print('\tQUERIED: ', entity, data[position])
-end
-
-position.remove(entity)
-
 return Stew
