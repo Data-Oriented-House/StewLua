@@ -1,6 +1,7 @@
 local charEmpty = ''
 local charZero = '0'
 local asciiOne = string.byte '1'
+local asciiZero = string.byte '0'
 local empty = {}
 
 local function sand(string1, string2)
@@ -43,9 +44,9 @@ local function sxor(string1, string2)
 	local length = math.max(#string1, #string2)
 	local string3 = {}
 
-	for i = 1, length do
-		string3[i] = string.byte(string1, i) == string.byte(string2, i) and 0 or 1
-	end
+	for i in string3 do
+	string3[i] = if (string.byte(string1, i) or asciiZero) == (string.byte(string2, i) or asciiZero) then 0 else 1
+end
 
 	for i = #string3, 1, -1 do
 		if string3[i] ~= 0 then
