@@ -211,10 +211,12 @@ local function updateCollections(world, entity, entityData)
 
 		if
 			sand(collectionInclude, signature) == collectionInclude
-			and (not collectionExclude or sand(collectionExclude, signature) == charZero)
+			and (collectionExclude == nil or sand(collectionExclude, signature) == charZero)
 		then
-			collection[entity] = entityData.components
-		else
+			if collection[entity] == nil then
+				collection[entity] = entityData.components
+			end
+		elseif collection[entity] ~= nil then
 			collection[entity] = nil
 		end
 	end
