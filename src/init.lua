@@ -45,8 +45,8 @@ local function sxor(string1, string2)
 	local string3 = {}
 
 	for i in string3 do
-	string3[i] = if (string.byte(string1, i) or asciiZero) == (string.byte(string2, i) or asciiZero) then 0 else 1
-end
+		string3[i] = if (string.byte(string1, i) or asciiZero) == (string.byte(string2, i) or asciiZero) then 0 else 1
+	end
 
 	for i = #string3, 1, -1 do
 		if string3[i] ~= 0 then
@@ -155,9 +155,7 @@ local function getCollection(world, signature)
 
 	for entity in pairs(universal) do
 		local data = world._entityToData[entity]
-		if
-			sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero)
-		then
+		if sand(include, data.signature) == include and (not exclude or sand(exclude, data.signature) == charZero) then
 			collection[entity] = data.components
 		end
 	end
@@ -208,15 +206,16 @@ local function updateCollections(world, entity, entityData)
 
 	for collectionSignature, collection in pairs(world._signatureToCollection) do
 		local collectionInclude, collectionExclude = split(collectionSignature)
+		local hasEntity = collection[entity] ~= nil
 
 		if
 			sand(collectionInclude, signature) == collectionInclude
 			and (collectionExclude == nil or sand(collectionExclude, signature) == charZero)
 		then
-			if collection[entity] == nil then
+			if not hasEntity then
 				collection[entity] = entityData.components
 			end
-		elseif collection[entity] ~= nil then
+		elseif hasEntity then
 			collection[entity] = nil
 		end
 	end
